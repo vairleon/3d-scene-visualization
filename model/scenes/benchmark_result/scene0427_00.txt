@@ -1,0 +1,6 @@
+predicted_masks/scene0427_00_004.txt 6 0.9895398521423431
+predicted_masks/scene0427_00_000.txt 3 0.9899659061431887
+predicted_masks/scene0427_00_001.txt 3 0.9898014569282481
+predicted_masks/scene0427_00_005.txt 5 0.9618275070190521
+predicted_masks/scene0427_00_003.txt 3 0.9899381303787322
+predicted_masks/scene0427_00_002.txt 3 0.9893782043457122
