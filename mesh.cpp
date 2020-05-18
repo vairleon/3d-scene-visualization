@@ -12,6 +12,9 @@ Mesh::Mesh(vector<Vertex> vertices, vector<unsigned int> indices, Meshinfo meshi
     setupMesh();
 }
 
+Mesh::Mesh() { 
+    this->meshinfo.id = id++; 
+}
 
 // render the mesh
 void Mesh::Draw(Shader shader)
@@ -31,7 +34,6 @@ void Mesh::Draw(Shader shader)
 void Mesh::setupMesh()
 {
   
-
     // create buffers/arrays
     glGenVertexArrays(1, &VAO);
     glGenBuffers(1, &VBO);
@@ -62,17 +64,10 @@ void Mesh::setupMesh()
 }
 
 
-void Mesh::faceReconstruction() {
-
-}
-
-void faceReconstruction(const vector<Vertex>& vetices, vector<unsigned int> indices) {
-
-}
 
 #define MINFLOAT -1000000.0f
 #define MAXFLOAT 1000000.0f
-void Mesh::pclNomalization() {  // nomalizing pclouds to (-1, 1)
+void Mesh::Nomalization() {  // nomalizing pclouds to (-1, 1)
 
     float max_x = MINFLOAT, min_x = MAXFLOAT;
     float max_y = MINFLOAT, min_y = MAXFLOAT;
@@ -119,7 +114,23 @@ void Mesh::pclNomalization() {  // nomalizing pclouds to (-1, 1)
     setupMesh();
 }
 
+void Mesh::clearMesh() {
+    glDeleteVertexArrays(1, &VAO);
+    glDeleteBuffers(1, &VBO);
+    glDeleteBuffers(1, &EBO);
+    setupMesh();
+}
 bool Mesh::isFaceNormals() {
     return indices.size() > 0 ? false: true;
 }
 
+
+void Mesh::toPointCloud(pcl::PointCloud<pcl::PointXYZ>::Ptr & cloud) {
+    if (isFaceNormals()) {
+        cout << "Error: cannot turn this mesh into PointCloud types" << endl;
+        return ;
+    }
+    for (unsigned int i = 0; i < vertices.size(); i++) {
+        (*cloud).push_back(pcl::PointXYZ(vertices[i].Position.x, vertices[i].Position.y, vertices[i].Position.z));
+    }
+}

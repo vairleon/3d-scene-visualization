@@ -5,7 +5,7 @@ void plyWriter(string path, const Mesh mesh) {
 
 	std::ofstream modelFile;
 	// 保证ifstream对象可以抛出异常：
-	modelFile.exceptions(std::ofstream::failbit | std::ofstream::badbit);
+	//modelFile.exceptions(std::ofstream::failbit | std::ofstream::badbit);
 	try
 	{
 		// 打开文件
@@ -181,6 +181,127 @@ void objParser(const vector<string>& objcode, vector<Mesh>& meshes) {
 	return;
 }
 
+void objParser(const vector<string>& objcode, Mesh & mesh) {
+
+	vector<Vertex> vertices;
+	vector<glm::vec3> normals;
+	vector<unsigned int>  v_indices;
+	vector<unsigned int>  vt_indices;
+	vector<unsigned int>  vn_indices;
+
+	bool isFaceNormal = false;
+	unsigned int codeindex = 0;
+
+	while (codeindex < objcode.size()) {
+		std::istringstream iss(objcode[codeindex]);
+		string token;
+		iss >> token;
+		if (token == "v") {
+			vector<float> vnum;
+			float num = 0;
+			while (iss >> num) { vnum.push_back(num); }
+			if (vnum.size() < 4) {
+				glm::vec3 vertex = glm::vec3(vnum[0], vnum[1], vnum[2]);
+				glm::vec3 color = glm::vec3(1.0f, 0.5f, 0.31f);
+				glm::vec3 normal = glm::vec3(0.0f, 0.0f, 0.0f);
+				vertices.push_back({ vertex, normal, color });
+			}
+			else {
+				glm::vec3 position = glm::vec3(vnum[0], vnum[1], vnum[2]);
+				glm::vec3 color = glm::vec3(vnum[3], vnum[4], vnum[5]);
+				glm::vec3 normal = glm::vec3(0.0f, 0.0f, 0.0f);
+				vertices.push_back({ position, normal, color });
+			}
+		}
+		else if (token == "vn") {
+			vector<float> vnum;
+			float num = 0;
+			while (iss >> num) { vnum.push_back(num); }
+			glm::vec3 normal = glm::vec3(vnum[0], vnum[1], vnum[2]);
+			normals.push_back(normal);
+		}
+		else if (token == "f") {
+			vector<string> tokens;
+			split(objcode[codeindex], tokens);
+
+			vector<unsigned int> temp_v_index;
+			//vector<unsigned int> temp_vt_index;
+			vector<unsigned int> temp_vn_index;
+			for (int i = 1; i < tokens.size(); i++) {
+				vector<string> str_index;
+				split(tokens[i], str_index, "/");
+				temp_v_index.push_back((unsigned int)atoi(str_index[0].c_str()) - 1);
+				if (str_index.size() > 1) {
+					temp_vn_index.push_back((unsigned int)atoi(str_index[str_index.size() - 1].c_str()) - 1);
+				}
+			}
+			if (temp_v_index.size() == 4) {
+				v_indices.push_back(temp_v_index[0]);
+				v_indices.push_back(temp_v_index[1]);
+				v_indices.push_back(temp_v_index[2]);
+				v_indices.push_back(temp_v_index[1]);
+				v_indices.push_back(temp_v_index[2]);
+				v_indices.push_back(temp_v_index[3]);
+
+				if (temp_vn_index.size()) {
+					vn_indices.push_back(temp_vn_index[0]);
+					vn_indices.push_back(temp_vn_index[1]);
+					vn_indices.push_back(temp_vn_index[2]);
+					vn_indices.push_back(temp_vn_index[1]);
+					vn_indices.push_back(temp_vn_index[2]);
+					vn_indices.push_back(temp_vn_index[3]);
+				}
+			}
+			else if (temp_v_index.size() == 3) {
+				v_indices.push_back(temp_v_index[0]);
+				v_indices.push_back(temp_v_index[1]);
+				v_indices.push_back(temp_v_index[2]);
+				if (temp_vn_index.size()) {
+					vn_indices.push_back(temp_vn_index[0]);
+					vn_indices.push_back(temp_vn_index[1]);
+					vn_indices.push_back(temp_vn_index[2]);
+				}
+				else {
+					int a = 0;
+				}
+			}
+			else {
+				throw "Warning : Can't read this format of faces !";
+			}
+		}
+		//else
+		codeindex++;
+	}
+
+	if (normals.size() != vertices.size()) {
+		isFaceNormal = true;
+	}
+
+
+	if (isFaceNormal) {
+		vector<Vertex> vertices_f(v_indices.size());
+		for (unsigned int i = 0; i < v_indices.size(); i++) {
+			vertices_f[i].Position = vertices[v_indices[i]].Position;
+			vertices_f[i].Normal = normals[vn_indices[i]];
+			vertices_f[i].Color = vertices[v_indices[i]].Color;
+		}
+
+		Meshinfo meshinfo;
+		v_indices.clear();
+		mesh = Mesh(vertices_f, v_indices, meshinfo);
+	}
+	else {
+		for (unsigned int i = 0; i < vertices.size(); i++) {
+			vertices[i].Normal = normals[i];
+		}
+		Meshinfo meshinfo;
+		mesh = Mesh(vertices, v_indices, meshinfo);
+	}
+
+
+
+	return;
+}
 
 // plyParser 只解析固定格式的plyfile 
 void plyParser(const vector<string>& plycode, vector<Mesh>& meshes) {
@@ -230,4 +351,42 @@ void plyParser(const vector<string>& plycode, vector<Mesh>& meshes) {
 	}
 	Meshinfo meshinfo;
 	meshes.push_back(Mesh(vertices, indices, meshinfo));
+}
+
+
+void objParserPointCloud(const vector<string>& objcode, vector<Vertex>& vertices) {
+
+	vector<unsigned int>  v_indices;
+
+	unsigned int codeindex = 0;
+
+	while (codeindex < objcode.size()) {
+		std::istringstream iss(objcode[codeindex]);
+		string token;
+		iss >> token;
+		if (token == "v") {
+			vector<float> vnum;
+			float num = 0;
+			while (iss >> num) { vnum.push_back(num); }
+			if (vnum.size() < 4) {
+				glm::vec3 vertex = glm::vec3(vnum[0], vnum[1], vnum[2]);
+				glm::vec3 color = glm::vec3(1.0f, 0.5f, 0.31f);
+				glm::vec3 normal = glm::vec3(0.0f, 0.0f, 0.0f);
+				vertices.push_back({ vertex, normal, color });
+			}
+			else {
+				glm::vec3 position = glm::vec3(vnum[0], vnum[1], vnum[2]);
+				glm::vec3 color = glm::vec3(vnum[3], vnum[4], vnum[5]);
+				glm::vec3 normal = glm::vec3(0.0f, 0.0f, 0.0f);
+				vertices.push_back({ position, normal, color });
+			}
+		}
+		//else
+		codeindex++;
+	}
+
+
+
+
+	return;
 }

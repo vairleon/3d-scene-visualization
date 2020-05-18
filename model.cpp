@@ -1,9 +1,11 @@
 #include "model.h"
 
 
-
+// the interface for 3d-sis segmentation result
 void sceneParser(vector<Mesh>& meshes, const string filename);	     //  scenes split through segmentation masks
 
+
+// class functions
 Model::Model(vector<string> path) {
 	
 	for (unsigned int i = 0; i < path.size(); i++) {
@@ -23,20 +25,17 @@ void Model::Draw(Shader shader, unsigned int mesh_id) {
 	}		
 }
 
-
-void Model::loadModel(string path) {
-    return ;
+void Model::Draw(Shader shader, int seq) {
+	meshes[seq].Draw(shader);
 }
 
 void Model::loadMesh(string path) {
 
 	// 从文件路径中获取模型文件
 	vector<string> codes; //读文档
-	vector<unsigned int> indices;
-	vector<Vertex> vertexs;
 	std::ifstream modelFile;
 	// 保证ifstream对象可以抛出异常：
-	modelFile.exceptions(std::ifstream::failbit | std::ifstream::badbit);
+	//modelFile.exceptions(std::ifstream::failbit | std::ifstream::badbit);
 	try
 	{
 		// 打开文件
@@ -77,12 +76,54 @@ void Model::loadMesh(string path) {
 }
 
 
+void Model::loadCADMesh(string path, Mesh& mesh) {
+
+	// 从文件路径中获取模型文件
+	vector<string> codes; //读文档
+	std::ifstream modelFile;
+	// 保证ifstream对象可以抛出异常：
+	//modelFile.exceptions(std::ifstream::failbit | std::ifstream::badbit);
+	try
+	{
+		// 打开文件
+		string code;
+		modelFile.open(path, std::ifstream::in);
+		while (!modelFile.eof()) {
+			std::getline(modelFile, code);
+			codes.push_back(code);
+		}
+		modelFile.close();
+		// 转换数据流到string
+		// plyCode = PlyStream.str();
+	}
+	catch (std::ifstream::failure e)
+	{
+		std::cout << "ERROR::MODEL_PLYFILE::FILE_NOT_SUCCESFULLY_READ" << std::endl;
+	}
+
+	objParser(codes, mesh);
+}
+
 void Model::saveMesh(string path) {
 	for (vector<Mesh>::iterator it = meshes.begin(); it != meshes.end(); it++) {
 		if ((*it).isFaceNormals()) { // transform .obj file into .ply file 
 			continue;	// to be updated soon
 		}
+		(*it).Nomalization();
 		plyWriter(path, *it);
+		//std::cout << "save mesh " << (*it).meshinfo.id << endl;
+	}
+}
+
+void Model::saveMesh(string path, unsigned int id) {
+	for (int i = 0; i < meshes.size(); i++) {
+		if (i == id) {
+			if (meshes[i].isFaceNormals()) { // transform .obj file into .ply file 
+				continue;	// to be updated soon
+			}
+			meshes[i].Nomalization();
+			plyWriter(path, meshes[i]);
+		}
 		//std::cout << "save mesh " << (*it).meshinfo.id << endl;
 	}
 }
@@ -90,16 +131,130 @@ void Model::saveMesh(string path) {
 void Model::meshNormalization(unsigned int mesh_id) {
 	for (unsigned int i = 0; i < meshes.size(); i++) {
 		if (mesh_id == meshes[i].meshinfo.id)
-			meshes[i].pclNomalization();
+			meshes[i].Nomalization();
 	}
 
 }
+
+
+int Model::getMeshNum() {
+	return meshes.size();
+}
+int Model::getMeshId(int seq) {
+	return meshes[seq].meshinfo.id;
+}
+int Model::getMeshLabel(int seq) {
+	return meshes[seq].meshinfo.label;
+}
+int Model::getMeshPointsNum(int seq) {
+	if (meshes[seq].isFaceNormals())
+		return -1;
+	return meshes[seq].vertices.size();
+}
+glm::mat4 Model::getMeshTransformation(int seq) {
+	return meshes[seq].meshinfo.trans;
+}
+
+bool Model::getIfVisible(int seq) {
+	return meshes[seq].meshinfo.visible;
+}
+Meshinfo Model::getMeshInfo(int seq) {
+	return meshes[seq].meshinfo;
+}
+
+void Model::centerMeshes() {
+	
+	int pointnum = 0; 
+	for (int i = 0; i < meshes.size(); i++) {
+		pointnum += meshes[i].vertices.size();
+	}
+
+	glm::vec3 centroid = glm::vec3(0.0f);
+	for (int i = 0; i < meshes.size(); i++) {
+		for (int j = 0; j < meshes[i].vertices.size(); j++) {
+			centroid += meshes[i].vertices[j].Position;
+		}
+	}
+	centroid /= (float)pointnum;
+
+	for (int i = 0; i < meshes.size(); i++) {
+		for (int j = 0; j < meshes[i].vertices.size(); j++) {
+			meshes[i].vertices[j].Position -= centroid;
+		}
+		meshes[i].clearMesh();
+	}
+}
+
+void Model::replaceMeshWithCADmodel(unsigned int mesh_id) {
+
+	for (unsigned int i = 0; i < meshes.size(); i++) {
+		if (mesh_id != meshes[i].meshinfo.id)
+			continue;
+		
+		if (meshes[i].isFaceNormals() || !meshes[i].meshinfo.visible)
+			return ;
+
+		PointCloudT::Ptr cloud_src(new PointCloudT);
+		PointCloudT::Ptr cloud_tgt(new PointCloudT);
+		meshes[i].toPointCloud(cloud_tgt);
+
+		// search cad database for similar target model
+		string path = query(cloud_tgt, cloud_src);
+
+		// load cad model 
+		Mesh mesh;
+		loadCADMesh(path, mesh);
+		mesh.meshinfo = meshes[i].meshinfo;
+
+		// alginment
+		Registration reg(cloud_src, cloud_tgt);	
+		reg.regMethodBySacIaAndIcp();
+		mesh.meshinfo.trans = EigenMatrix4fToGlmMat4(reg.getFinalTransformation());
+		
+		// replace
+		meshes[i].meshinfo.visible = false;
+		meshes.push_back(mesh);
+		
+		break;
+	}
+}
+
+void Model::replaceMeshWithCADmodel(int seq) {
+
+
+	if (meshes[seq].isFaceNormals() || !meshes[seq].meshinfo.visible)
+		return;
+
+	PointCloudT::Ptr cloud_src(new PointCloudT);
+	PointCloudT::Ptr cloud_tgt(new PointCloudT);
+	meshes[seq].toPointCloud(cloud_tgt);
+
+	// search cad database for similar target model
+	string path = query(cloud_tgt, cloud_src);
+
+	// load cad model 
+	Mesh mesh;
+	loadCADMesh(path, mesh);
+	mesh.meshinfo = meshes[seq].meshinfo;
+
+	// alginment
+	Registration reg(cloud_src, cloud_tgt);		
+	reg.regMethodBySacIaAndIcp();
+	mesh.meshinfo.trans = EigenMatrix4fToGlmMat4(reg.getFinalTransformation());
+
+	// replace
+	meshes[seq].meshinfo.visible = false;
+	meshes.push_back(mesh);
+
+}
+
 
 
 /* 可以做并行加速 */
 void sceneParser(vector<Mesh>& meshes, const string filename) {
 
 	std::cout << "start sceneParser..." << std::endl;
+	clock_t time_start = clock();
 
 	vector<string> tokens;
 	split(filename, tokens, ".");
@@ -153,7 +308,7 @@ void sceneParser(vector<Mesh>& meshes, const string filename) {
 		vector<int> mask;
 		// -- 再定义一个流
 		std::ifstream infoFile;
-		infoFile.exceptions(std::ifstream::failbit | std::ifstream::badbit);
+		//infoFile.exceptions(std::ifstream::failbit | std::ifstream::badbit);
 		try
 		{
 			string line;
@@ -218,10 +373,13 @@ void sceneParser(vector<Mesh>& meshes, const string filename) {
 		meshes.push_back(mesh);
 	}
 
+	//...
+	clock_t time_end = clock();
+	cout << "sceneParser finished within " << 1000 * (time_end - time_start) / (double)CLOCKS_PER_SEC << "ms" << endl;
+
 }
 
 
-void Model::replaceMeshWithCADmodel(unsigned int mesh_id) {
-
+void Model::autoRefineScenes() {
 
 }

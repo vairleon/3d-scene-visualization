@@ -5,6 +5,9 @@
 #include <glm/gtc/matrix_transform.hpp>
 #include <glm/gtc/type_ptr.hpp>
 
+#include <pcl/point_types.h>
+#include <pcl/point_cloud.h> 
+
 #include <vector>
 #include <iostream>
 #include <cmath>
@@ -27,8 +30,21 @@ struct Meshinfo {
     int label; //
     int m_face; //triangle or poly
     float prob;
+    glm::mat4 trans;
+    bool visible;
     //string info;
-    Meshinfo() : id(0), label(0), prob(0.0f), m_face(3){};
+    Meshinfo& operator=(const Meshinfo& other) {
+        
+        label = other.label;
+        m_face = other.m_face;
+        prob = other.prob;
+        trans = other.trans;
+        visible = other.visible;
+        //info = other.info;
+        return *this;
+    }
+
+    Meshinfo() : id(0), label(0), prob(0.0f), m_face(3), trans(1.0f), visible(true){};
 };
 
 
@@ -41,25 +57,28 @@ public:
     Meshinfo meshinfo;
 
     unsigned int VAO;
-    bool hasNormals;
+
 
     /*  函数  */
     Mesh(vector<Vertex> vertices, vector<unsigned int> indices, Meshinfo meshinfo);
+    Mesh();
     void Draw(Shader shader);
 
     // --- utils --- //
     bool isFaceNormals();
-    void facesGenerate();
-    void pclNomalization(); // test
-    
+    void Nomalization(); // test
+    void toPointCloud(pcl::PointCloud<pcl::PointXYZ>::Ptr& cloud);
+    void transformMesh(glm::mat4 trans);
+    void clearMesh();
 
 private:
     /*  渲染数据  */
     static unsigned int id; //
     unsigned int VBO, EBO;
+    bool hasNormals;
     /*  函数  */
     void setupMesh();
-    void normalsGeneration();
+    void normalGeneration();
     void faceReconstruction();
 };
 

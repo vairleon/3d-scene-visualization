@@ -70,6 +70,6 @@ void main()
         result = (ambient + diffuse + specular) * objectColor;
 	}
    
-    FragColor = vec4(result, alpha);
+    FragColor = vec4(result, 0.1);
 } 
 
