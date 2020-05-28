@@ -1,7 +1,7 @@
 #ifndef CAMERA_H
 #define CAMERA_H
 
-#include <glad/glad.h>
+
 #include <glm/glm.hpp>
 #include <glm/gtc/matrix_transform.hpp>
 
@@ -15,11 +15,15 @@ enum Camera_Movement {
     RIGHT
 };
 
+
 // Default camera values
 const float YAW = -90.0f;
 const float PITCH = 0.0f;
+#ifndef MOUSESPEED
+#define MOUSESPEED
 const float SPEED = 2.5f;
-const float SENSITIVITY = 0.1f;
+const float SENSITIVITY = 0.01f;
+#endif
 const float ZOOM = 45.0f;
 
 
@@ -64,6 +68,14 @@ public:
     glm::mat4 GetViewMatrix()
     {
         return glm::lookAt(Position, Position + Front, Up);
+    }
+    void ResetViewMatrix() {
+        Position = glm::vec3(0.0f, 0.0f, 0.0f);
+        Up = glm::vec3(0.0f, 1.0f, 0.0f);
+        Yaw = YAW;
+        Pitch = PITCH;
+        Front = glm::vec3(0.0f, 0.0f, -1.0f);
+        Zoom = ZOOM;
     }
 
     // Processes input received from any keyboard-like input system. Accepts input parameter in the form of camera defined ENUM (to abstract it from windowing systems)
