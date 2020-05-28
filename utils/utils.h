@@ -40,8 +40,7 @@ vector<Type> stringToNum(const string& str)
 void split(const string& s, vector<string>& tokens, const string& delimiters = " ");
 
 glm::mat4 EigenMatrix4fToGlmMat4(const Eigen::Matrix4f& matrix);
-
-
+// glm::mat4 EigenMatrix4fToGlmMat4(const Eigen::Matrix4d& matrix);
 
 struct Vx {
     float x, y, z;

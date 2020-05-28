@@ -26,23 +26,34 @@ struct Vertex {
 };
 
 struct Meshinfo {
+    //unsigned int _;
     unsigned int id;
-    int label; //
+    int label; //    
     int m_face; //triangle or poly
     float prob;
     glm::mat4 trans;
     bool visible;
     //string info;
-    Meshinfo& operator=(const Meshinfo& other) {
-        
-        label = other.label;
-        m_face = other.m_face;
-        prob = other.prob;
-        trans = other.trans;
-        visible = other.visible;
+
+    void copy(const Meshinfo& other) {
+        this->label = other.label;
+        this->m_face = other.m_face;
+        this->prob = other.prob;
+        this->trans = other.trans;
+        this->visible = other.visible;
         //info = other.info;
-        return *this;
     }
+
+    //Meshinfo& operator=(const Meshinfo& other) {
+    //    id = other.id;
+    //    label = other.label;
+    //    m_face = other.m_face;
+    //    prob = other.prob;
+    //    trans = other.trans;
+    //    visible = other.visible;
+    //    //info = other.info;
+    //    return *this;
+    //}
 
     Meshinfo() : id(0), label(0), prob(0.0f), m_face(3), trans(1.0f), visible(true){};
 };
@@ -52,9 +63,9 @@ struct Meshinfo {
 class Mesh { //single mesh
 public:
     /*  网格数据  */
+    Meshinfo meshinfo;
     vector<Vertex> vertices;
     vector<unsigned int> indices;
-    Meshinfo meshinfo;
 
     unsigned int VAO;
 
@@ -68,8 +79,8 @@ public:
     bool isFaceNormals();
     void Nomalization(); // test
     void toPointCloud(pcl::PointCloud<pcl::PointXYZ>::Ptr& cloud);
-    void transformMesh(glm::mat4 trans);
-    void clearMesh();
+    void Mesh::destroyMesh();
+    void Mesh::buildMesh();
 
 private:
     /*  渲染数据  */

@@ -25,6 +25,7 @@
 #include "target.h"
 #include "model.h"
 #include "manager.h"
+#include "coordinates.h"
 
 void _transformation(glm::mat4& target, const glm::mat4& trans);
 void framebuffer_size_callback(GLFWwindow* window, int width, int height);
@@ -131,8 +132,8 @@ int main()
     // -------------------------
     //Shader sceneShader("shader\\scene_shader.vs", "shader\\scene_shader.fs"); 
     Shader lightingShader("shader\\light_shader.vs", "shader\\light_shader.fs");
+    Shader coordinateShader("shader\\coordinates_shader.vs", "shader\\coordinates_shader.fs");
     //Shader cubeShader("shader\\shader.vs", "shader\\shader.fs");
-    //Shader cursorShader("shader\\cursor_shader.vs", "shader\\cursor_shader.fs");
 
     // load models
     // -----------
@@ -150,18 +151,27 @@ int main()
     // -----------
     //sceneModel.saveMesh("output\\temp\\");
 
-    
+
+    // load coordinate system
+    Coordinates coordinate = Coordinates(0.5f, 10.0f);
+
     // Setup Dear ImGui context
     GuiManager guimanager(sceneModel);
     guimanager.ImguiInit(window);
 	//guimanager.scenemodel.centerMeshes();
 
-
-
     // Our state
     bool show_guimanager_window = true;
     bool show_another_window = false;
+
     ImVec4 clear_color = ImVec4(0.45f, 0.55f, 0.60f, 1.00f);
+
+    float rd_ambient = 0.2f;
+    float rd_diffuse = 1.0f;
+    float rd_specular = 1.0f;
+    ImVec4 object_color = ImVec4(1.0f, 0.5f, 0.31f, 1.0f);
+    ImVec4 coordinate_color = ImVec4(0.39f, 1.0f, 0.5f, 0.5f);
+    bool light_blinn = true;
 
     // render loop
     // -----------
@@ -200,53 +210,45 @@ int main()
         lightingShader.setVec3("viewPos", camera.Position);
         // light properties
         lightingShader.setVec3("light.lightColor", 1.0f, 1.0f, 1.0f);
-        lightingShader.setVec3("light.ambient", 0.2f, 0.2f, 0.2f);
-        lightingShader.setVec3("light.diffuse", 1.0f, 1.0f, 1.0f);
-        lightingShader.setVec3("light.specular", 1.0f, 1.0f, 1.0f);
+        lightingShader.setVec3("light.ambient", rd_ambient, rd_ambient, rd_ambient);
+        lightingShader.setVec3("light.diffuse", rd_diffuse, rd_diffuse, rd_diffuse);
+        lightingShader.setVec3("light.specular", rd_specular, rd_specular, rd_specular);
         // material properties
         lightingShader.setFloat("material.shininess", 8.0f);
         // set blinn phong lighting model
-        lightingShader.setInt("blinn", true);
+        lightingShader.setInt("blinn", light_blinn);
         // adjust target color
         lightingShader.setFloat("alpha", 1.0f);
         lightingShader.setInt("if_setColor", false);
-        lightingShader.setVec3("objectColor", 1.0f, 0.5f, 0.31f);
-
-        // draw target model
-        //glm::mat4 model = glm::mat4(1.0f);
-        //lightingShader.setMat4("model", model);
-        //sceneModel.Draw(lightingShader, 2);  // draw mesh where mesh_id == 1
-        //sceneModel.Draw(lightingShader);
+        lightingShader.setVec3("objectColor", object_color.x, object_color.y, object_color.z);
 
         for (int i = 0; i < guimanager.scenemodel.getMeshNum(); i++) {
-            if (!guimanager.scenemodel.getIfVisible(i))   continue;
+            if (!guimanager.scenemodel.getIfVisible(i))  
+                continue;
             model = guimanager.scenemodel.getMeshTransformation(i);
             lightingShader.setMat4("model", model);
             guimanager.scenemodel.Draw(lightingShader, i);
         }
 
-
-        // don't forget to enable shader before setting uniforms
-        // draw scene model
-        //sceneShader.use();
-        //sceneShader.setMat4("view", view);
-        //sceneShader.setMat4("model", model);
-        //sceneShader.setMat4("projection", projection);
-        //sceneModel.Draw(sceneShader);
+        // ------------------- Rendering Coordinate system --------------------
+        coordinateShader.use();
+        coordinateShader.setMat4("view", view);
+        coordinateShader.setMat4("projection", projection);
+        coordinateShader.setVec4("vertexColor", coordinate_color.x, coordinate_color.y, coordinate_color.z, coordinate_color.w);
+        coordinate.Draw(coordinateShader);
 
         // ------------------- Start the Dear ImGui frame -------------------
         ImGui_ImplOpenGL3_NewFrame();
         ImGui_ImplGlfw_NewFrame();
         ImGui::NewFrame();
 
-        // 1. Show the big demo window (Most of the sample code is in ImGui::ShowDemoWindow()! You can browse its code to learn more about Dear ImGui!).
+        // 1. Show the manager window 
         if (show_guimanager_window)
             guimanager.ShowManagerWindow(&show_guimanager_window);
 
-        // 2. Show a simple window that we create ourselves. We use a Begin/End pair to created a named window.
+        // 2. Show a simple window. use a Begin/End pair to created a named window.
         {
-            static float f = 0.0f;
-            static int counter = 0;
+           // static float f = 0.0f;
 
             ImGui::Begin("Manager");                          // Create a window called "Hello, world!" and append into it.
 
@@ -254,57 +256,80 @@ int main()
             ImGui::Checkbox("tools", &show_guimanager_window);      // Edit bools storing our window open/close state
             ImGui::Checkbox("settings", &show_another_window);
 
-            ImGui::SliderFloat("float", &f, 0.0f, 1.0f);            // Edit 1 float using a slider from 0.0f to 1.0f
+          //  ImGui::SliderFloat("float", &f, 0.0f, 1.0f);            // Edit 1 float using a slider from 0.0f to 1.0f
             ImGui::ColorEdit3("clear color", (float*)&clear_color); // Edit 3 floats representing a color
 
+
+            const char* alignment_methods[] = { "SacIa&Icp&AlignedFloor", "SacIa&Icp" };
+            static int method_current = 0;
+            ImGui::Combo("methods", &method_current, alignment_methods, IM_ARRAYSIZE(alignment_methods));
+            // ------------ need to be revised --------------
             if (ImGui::Button("Auto Refine")) {
+
                 unsigned int mesh_id = 2;
-                guimanager.scenemodel.replaceMeshWithCADmodel(mesh_id);
+                guimanager.scenemodel.replaceMeshWithCADmodel(mesh_id, method_current);
                 mesh_id = 3;
-                guimanager.scenemodel.replaceMeshWithCADmodel(mesh_id);
+                guimanager.scenemodel.replaceMeshWithCADmodel(mesh_id, method_current);
                 mesh_id = 5;
-                guimanager.scenemodel.replaceMeshWithCADmodel(mesh_id);
+                guimanager.scenemodel.replaceMeshWithCADmodel(mesh_id, method_current);
                 mesh_id = 6;
-                guimanager.scenemodel.replaceMeshWithCADmodel(mesh_id);
+                guimanager.scenemodel.replaceMeshWithCADmodel(mesh_id, method_current);
             }
             ImGui::SameLine();
             if (ImGui::Button("Reset Scene")) {
                 guimanager.setModel(sceneModel);
-
             }
                 
             ImGui::SameLine();
-            if (ImGui::Button(" Center "))
+            
+            if (ImGui::Button("Reset Viewer")) {
+                camera.ResetViewMatrix();
+                targetmodel.setTransformationMatrix(glm::mat4(1.0f));
+            }
+
+            if (ImGui::Button("  Center  "))
                 guimanager.scenemodel.centerMeshes();
+
+            ImGui::SameLine();
+            if (ImGui::Button(" Fit Plane "))
+                guimanager.scenemodel.floorAlignment();
 
             ImGui::Text("Application average %.3f ms/frame (%.1f FPS)", 1000.0f / ImGui::GetIO().Framerate, ImGui::GetIO().Framerate);
             ImGui::End();
         }
 
-        // 3. Show another simple window.
+        // 3. Show settings window.
         if (show_another_window)
         {
-            ImGui::Begin("Another Window", &show_another_window);   // Pass a pointer to our bool variable (the window will have a closing button that will clear the bool when clicked)
-            ImGui::Text("Hello from another window!");
-            if (ImGui::Button("Close Me"))
+            ImGui::Begin("rendering settings", &show_another_window);   // Pass a pointer to our bool variable (the window will have a closing button that will clear the bool when clicked)
+            ImGui::Text("Adjust rendering settings!");
+            ImGui::Checkbox("light blinn-phone", &light_blinn);
+            ImGui::SliderFloat("ambient", &rd_ambient, 0.0f, 1.0f);
+            ImGui::SliderFloat("diffuse", &rd_diffuse, 0.0f, 1.0f);
+            ImGui::SliderFloat("specular", &rd_specular, 0.0f, 1.0f);
+            ImGui::ColorEdit3("object color", (float*)&object_color);
+
+            if (ImGui::Button(" Close "))
                 show_another_window = false;
             ImGui::End();
         }
 
         ImGui::Render();
         ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
+
         // glfw: swap buffers and poll IO events (keys pressed/released, mouse moved etc.)
         // -------------------------------------------------------------------------------       
-        //int display_w, display_h;
-        //glfwGetFramebufferSize(window, &display_w, &display_h);
-        //glViewport(0, 0, display_w, display_h);
-
         glfwSwapBuffers(window);
         glfwPollEvents();
     }
 
+    // Cleanup
+    ImGui_ImplOpenGL3_Shutdown();
+    ImGui_ImplGlfw_Shutdown();
+    ImGui::DestroyContext();
     // glfw: terminate, clearing all previously allocated GLFW resources.
     // ------------------------------------------------------------------
+    glfwDestroyWindow(window);
     glfwTerminate();
     return 0;
 }

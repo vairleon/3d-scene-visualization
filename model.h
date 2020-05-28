@@ -14,12 +14,14 @@
 #include "caddb.h"
 #include "utils/utils.h"
 #include "lib/registration.h"
+#include "lib/planefit.h"
 
 #include <string>
 #include <fstream>
 #include <sstream>
 #include <iostream>
 #include <vector>
+#include <map>
 #include <regex>
 #include <cstdlib>
 #include <cstring>
@@ -32,9 +34,12 @@ class Model  //file - level
 public:
     /*  funcs   */
     Model(const Model & model) {
+        for (int i = 0; i < meshes.size(); i++) {
+            meshes[i].destroyMesh();
+        }
         meshes = model.meshes;
         for (int i = 0; i < meshes.size(); i++) {
-            meshes[i].clearMesh();
+            meshes[i].buildMesh();
         }
     };
     Model() {};
@@ -53,29 +58,38 @@ public:
 
     // get mesh infomation
     int getMeshNum();
-    int getMeshId(int seq);
+    unsigned int getMeshId(int seq);
     int getMeshLabel(int seq);
     int getMeshPointsNum(int seq);
     glm::mat4 getMeshTransformation(int seq);
     bool getIfVisible(int seq);
     Meshinfo getMeshInfo(int seq);
-
+    void setVisible(unsigned int mesh_id);
+    void delMesh(unsigned int mesh_id);
     // refine scenes
     
     void autoRefineScenes();  // waiting for update .........
 
     void replaceMeshWithCADmodel(unsigned int mesh_id);
     void replaceMeshWithCADmodel(int seq);
-    void floorAlignment(); // transform entire model(floor) to surface-xy.
-    void transformMeshes();
-    void centerMeshes();
+    void replaceMeshWithCADmodel(unsigned int mesh_id, int method);
 
+    //void transformMeshes();
+    void centerMeshes();
+    void floorAlignment(); // transform entire model(floor) to surface-xy.
+    map<unsigned int, unsigned int> getReplacingMap();
+    void discardUselessMeshes(); // clean meshes replaced by CAD model
+    
+   
     // test utils
     void meshNormalization(unsigned int mesh_id);
 private:
     /*  模型数据  */
     vector<Mesh> meshes;
     //string directory;
+
+    // replacing Map
+    map<unsigned int, unsigned int> replacingMap;
 
     /*  func   */
     void loadModel(string path);
@@ -86,7 +100,12 @@ private:
 
     /*  model transformation */
     void modelTransformation(const Eigen::Matrix4f matrix);
-   
+    void modelTransformation(const glm::mat4 trans);
+
+    /* replacing map */
+    void addReplacingMap(const unsigned int ori_mesh_id, const unsigned int cad_mesh_id);
+    bool delReplacingMap(const unsigned int ori_mesh_id);
+
 };
 
 

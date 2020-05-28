@@ -1,7 +1,5 @@
 #include "manager.h"
 
-
-
 GuiManager::GuiManager() {
 
 }
@@ -10,8 +8,6 @@ GuiManager::GuiManager(const Model& model) {
 	Model tempmodel(model);
 	scenemodel = tempmodel;
 }
-
-
 
 void GuiManager::setModel(const Model& model) {
 	Model tempmodel(model);
@@ -55,8 +51,6 @@ void GuiManager::ImguiInit(GLFWwindow* window) {
 void GuiManager::ShowManagerWindow(bool* p_open) {
     IM_ASSERT(ImGui::GetCurrentContext() != NULL && "Missing dear imgui context. Refer to examples app!"); // Exceptionally add an extra assert here for people confused with initial dear imgui setup
    
-
-
 
     if (show_app_metrics) { ImGui::ShowMetricsWindow(&show_app_metrics); }
     if (show_app_style_editor) { ImGui::Begin("Style Editor", &show_app_style_editor); ImGui::ShowStyleEditor(); ImGui::End(); }
@@ -239,25 +233,60 @@ void GuiManager::ShowModelColumns() {
     if (disable_indent)
         ImGui::PushStyleVar(ImGuiStyleVar_IndentSpacing, 0.0f);
 
+
+    if (ImGui::TreeNode("mapping table"))
+    {
+        ImGui::Text("index : label");
+        ImGui::Columns(4, "mycolumns3", false);  // 4-ways, no border
+        ImGui::Separator();
+        char _label[20][15] = {"Unidentified", "cabinet", "bed", "chair", "sofa", "table", "door",
+            "window", "bookshelf", "picutre", "counter", "desk", "curtain", "refrigerator", "shower curtain", "toilet", "sink", "bathtub", "otherfurniture"};
+        for (int n = 0; n < 19; n++)
+        {
+            char label[32];
+            sprintf(label, "%d : %s", n, _label[n]);
+            if (ImGui::Selectable(label)) {}
+            //if (ImGui::Button(label, ImVec2(-FLT_MIN,0.0f))) {}
+            ImGui::NextColumn();
+        }
+        // ImGui::Columns(1);
+        ImGui::Columns(1);
+        ImGui::Separator();
+        ImGui::TreePop();
+    }
     // Basic columns
     if (ImGui::TreeNode("Basic"))
     {
+        static int selected = -1;
+        
+        if (ImGui::Button("Clear")) {
+            // bug, cannot be fixed
+            // scenemodel.discardUselessMeshes();
+        }
+        ImGui::SameLine();
+        if (ImGui::Button("delete")) { 
+            scenemodel.delMesh(scenemodel.getMeshId(selected));
+        }
+        ImGui::SameLine();
+        if (ImGui::Button("setVisible")) {
+            scenemodel.setVisible(scenemodel.getMeshId(selected));
+        }
         // ImGui::Text("With border:");
-        ImGui::Columns(4, "mycolumns"); // 4-ways, with border
+        ImGui::Columns(4, "set columns"); // 4-ways, with border
         ImGui::Separator();
         ImGui::Text("ID"); ImGui::NextColumn();
         ImGui::Text("Label"); ImGui::NextColumn();
         ImGui::Text("Visible"); ImGui::NextColumn();
         ImGui::Text("Points"); ImGui::NextColumn();
         ImGui::Separator();
-        static int selected = -1;
+        
         for (int i = 0; i < scenemodel.getMeshNum(); i++)
         {
             char buffer[32];
             sprintf(buffer, "%03d", scenemodel.getMeshId(i));
             if (ImGui::Selectable(buffer, selected == i, ImGuiSelectableFlags_SpanAllColumns))
                 selected = i;
-            bool hovered = ImGui::IsItemHovered();
+            // bool hovered = ImGui::IsItemHovered();
             ImGui::NextColumn();
             ImGui::Text("%d", scenemodel.getMeshLabel(i)); ImGui::NextColumn();
             ImGui::Text( scenemodel.getIfVisible(i) ? "true" : "false" ); ImGui::NextColumn();
@@ -274,7 +303,7 @@ void GuiManager::ShowModelColumns() {
         static bool h_borders = true;
         static bool v_borders = true;
         static int columns_count = 2;
-        const int lines_count = floor(scenemodel.getMeshNum()/2) + 1 ;
+        // const int lines_count = floor((scenemodel.getMeshNum() - scenemodel.getReplacingMap.size())/2) + 1 ;
         ImGui::SetNextItemWidth(ImGui::GetFontSize() * 8);
         ImGui::DragInt("##columns_count", &columns_count, 0.1f, 2, 10, "%d columns");
         if (columns_count < 2)
@@ -287,6 +316,9 @@ void GuiManager::ShowModelColumns() {
 
         for (int i = 0; i < scenemodel.getMeshNum(); i++)
         {
+            if (scenemodel.getMeshInfo(i).m_face == -1)
+                continue;
+
             if (h_borders && ImGui::GetColumnIndex() == 0)
                 ImGui::Separator();
             ImGui::Text("mesh %d", scenemodel.getMeshId(i));
@@ -308,34 +340,9 @@ void GuiManager::ShowModelColumns() {
     }
 
     // Create multiple items in a same cell before switching to next column
-    if (ImGui::TreeNode("Mixed items"))
+    if (ImGui::TreeNode("RegConfig"))
     {
-        ImGui::Columns(3, "mixed");
-        ImGui::Separator();
-
-        ImGui::Text("Hello");
-        ImGui::Button("Banana");
-        ImGui::NextColumn();
-
-        ImGui::Text("ImGui");
-        ImGui::Button("Apple");
-        static float foo = 1.0f;
-        ImGui::InputFloat("red", &foo, 0.05f, 0, "%.3f");
-        ImGui::Text("An extra line here.");
-        ImGui::NextColumn();
-
-        ImGui::Text("Sailor");
-        ImGui::Button("Corniflower");
-        static float bar = 1.0f;
-        ImGui::InputFloat("blue", &bar, 0.05f, 0, "%.3f");
-        ImGui::NextColumn();
-
-        if (ImGui::CollapsingHeader("Category A")) { ImGui::Text("Blah blah blah"); } ImGui::NextColumn();
-        if (ImGui::CollapsingHeader("Category B")) { ImGui::Text("Blah blah blah"); } ImGui::NextColumn();
-        if (ImGui::CollapsingHeader("Category C")) { ImGui::Text("Blah blah blah"); } ImGui::NextColumn();
-        ImGui::Columns(1);
-        ImGui::Separator();
-        ImGui::TreePop();
+       
     }
 
     // Word wrapping
@@ -352,6 +359,7 @@ void GuiManager::ShowModelColumns() {
         ImGui::Separator();
         ImGui::TreePop();
     }
+
 
     // Scrolling columns
     /*

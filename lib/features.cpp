@@ -26,7 +26,6 @@ pcl::PointCloud<pcl::FPFHSignature33>::Ptr getFeatures(pcl::PointCloud<pcl::Poin
 	return fpfh_features;
 }
 
-
 pcl::PointCloud<pcl::Normal>::Ptr getNormals(pcl::PointCloud<pcl::PointXYZ>::Ptr incloud, double normals_radius = 0.25) {
 
 	pcl::NormalEstimation<pcl::PointXYZ, pcl::Normal> ne;

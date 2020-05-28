@@ -8,12 +8,16 @@ Mesh::Mesh(vector<Vertex> vertices, vector<unsigned int> indices, Meshinfo meshi
     this->indices = indices;
     this->meshinfo = meshinfo;
     // setup mesh obj , bind mesh with VAO VBO EBO
-    this->meshinfo.id = id++;
+    const int temp = id;
+    this->meshinfo.id = temp;
+    id++;
     setupMesh();
 }
 
 Mesh::Mesh() { 
-    this->meshinfo.id = id++; 
+    const int temp = id;
+    this->meshinfo.id = temp;
+    id++;
 }
 
 // render the mesh
@@ -114,16 +118,20 @@ void Mesh::Nomalization() {  // nomalizing pclouds to (-1, 1)
     setupMesh();
 }
 
-void Mesh::clearMesh() {
+void Mesh::destroyMesh() {
     glDeleteVertexArrays(1, &VAO);
     glDeleteBuffers(1, &VBO);
     glDeleteBuffers(1, &EBO);
+    
+}
+
+void Mesh::buildMesh() {
     setupMesh();
 }
+
 bool Mesh::isFaceNormals() {
     return indices.size() > 0 ? false: true;
 }
-
 
 void Mesh::toPointCloud(pcl::PointCloud<pcl::PointXYZ>::Ptr & cloud) {
     if (isFaceNormals()) {

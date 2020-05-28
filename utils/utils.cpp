@@ -23,6 +23,8 @@ glm::mat4 EigenMatrix4fToGlmMat4(const Eigen::Matrix4f& matrix)
 	return mat;
 }
 
+
+
 #define INTERPOLATION 5000
 void objParserPointCloud(const vector<string>& objcode, vector<Vx>& vertices) {
 
@@ -97,7 +99,7 @@ vector<string> fileReader(const string path) {
 	vector<string> codes; //读文档
 	std::ifstream modelFile;
 	// 保证ifstream对象可以抛出异常：
-	modelFile.exceptions(std::ifstream::failbit | std::ifstream::badbit);
+	// modelFile.exceptions(std::ifstream::failbit | std::ifstream::badbit);
 	try
 	{
 		// 打开文件
@@ -113,7 +115,7 @@ vector<string> fileReader(const string path) {
 	}
 	catch (std::ifstream::failure e)
 	{
-		std::cout << "ERROR::MODEL_PLYFILE::FILE_NOT_SUCCESFULLY_READ" << std::endl;
+		std::cout << "Utils.cpp: ERROR::MODEL_PLYFILE::FILE_NOT_SUCCESFULLY_READ" << std::endl;
 	}
 
 	return codes;

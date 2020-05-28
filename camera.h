@@ -69,6 +69,14 @@ public:
     {
         return glm::lookAt(Position, Position + Front, Up);
     }
+    void ResetViewMatrix() {
+        Position = glm::vec3(0.0f, 0.0f, 0.0f);
+        Up = glm::vec3(0.0f, 1.0f, 0.0f);
+        Yaw = YAW;
+        Pitch = PITCH;
+        Front = glm::vec3(0.0f, 0.0f, -1.0f);
+        Zoom = ZOOM;
+    }
 
     // Processes input received from any keyboard-like input system. Accepts input parameter in the form of camera defined ENUM (to abstract it from windowing systems)
     void ProcessKeyboard(Camera_Movement direction, float deltaTime)

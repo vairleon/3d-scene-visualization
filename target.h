@@ -56,12 +56,12 @@ public:
     }
 
 
-    glm::mat4 setTransformationMatrix(glm::mat4 trans)
+    void setTransformationMatrix(glm::mat4 trans)
     {
         TransformationMatrix = trans;
     }
 
-    glm::mat4 setTransformationMatrix(glm::vec3 axis, float angle, glm::vec3 translation)
+    void setTransformationMatrix(glm::vec3 axis, float angle, glm::vec3 translation)
     {
         rotationAngle = angle;
         rotationAxis = axis;
@@ -102,7 +102,7 @@ public:
 
             rotationAngle = 0.0f;
             rotationAxis = glm::vec3(0.0f, 1.0f, 0.0f);
-            translationVector = glm::vec3(-xoffset * SENSITIVITY, yoffset * SENSITIVITY, 0);
+            translationVector = glm::vec3(xoffset * SENSITIVITY, yoffset * SENSITIVITY, 0);
 
         }
 
